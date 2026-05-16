@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindEase — Mental Health Support</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- Mood Check-in Screen -->
+    <div id="mood-screen" class="screen active">
+        <div class="mood-card">
+            <div class="logo">🌿</div>
+            <h1>MindEase</h1>
+            <p class="tagline">A safe space to talk about how you're feeling.</p>
+
+            <div class="mood-section">
+                <label>Before we begin — how are you feeling right now?</label>
+                <div class="mood-slider-wrapper">
+                    <input type="range" id="mood-slider" min="1" max="10" value="5">
+                    <div class="mood-labels">
+                        <span>😔 Very low</span>
+                        <span id="mood-value">5</span>
+                        <span>😊 Great</span>
+                    </div>
+                </div>
+                <p id="mood-description" class="mood-desc"></p>
+            </div>
+
+            <button id="start-btn" onclick="startChat()">Start Talking</button>
+            <p class="disclaimer">Not a substitute for professional mental health care.</p>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chat-screen" class="screen">
+        <div class="chat-wrapper">
+
+            <header class="chat-header">
+                <div class="header-left">
+                    <span class="header-logo">🌿</span>
+                    <div>
+                        <h2>MindEase</h2>
+                        <span class="status">● Online</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <span id="mood-badge"></span>
+                    <button class="icon-btn" onclick="clearHistory()" title="Clear chat">🗑</button>
+                    <button class="icon-btn" onclick="goBack()" title="Back">✕</button>
+                </div>
+            </header>
+
+            <div id="chat-box">
+                <div class="bot-message message">
+                    <p id="greeting-text"></p>
+                </div>
+            </div>
+
+            <!-- Crisis Banner (hidden by default) -->
+            <div id="crisis-banner" class="crisis-banner hidden">
+                <strong>🆘 If you're in crisis, please call:</strong>
+                Nigeria: <a href="tel:08006368259">0800-MENTALLY</a> &nbsp;|&nbsp;
+                International: <a href="https://befrienders.org" target="_blank">befrienders.org</a>
+            </div>
+
+            <div class="input-area">
+                <input type="text" id="message" placeholder="Share how you're feeling..." 
+                       onkeydown="if(event.key==='Enter') sendMessage()">
+                <button id="send-btn" onclick="sendMessage()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ── State ──────────────────────────────────────────────
+        let conversationHistory = [];
+        let userMood = 5;
+
+        const moodDescriptions = {
+            1: "That sounds really tough. I'm glad you're here. 💙",
+            2: "I hear you — it's okay to not be okay.",
+            3: "Some days are harder than others. Let's talk.",
+            4: "I'm here to listen whenever you're ready.",
+            5: "A middle ground — let's explore how you're feeling.",
+            6: "Not bad! What's been on your mind?",
+            7: "Sounds like a decent day. How can I help?",
+            8: "Really glad to hear that! What's going well?",
+            9: "That's wonderful! Tell me more.",
+            10: "Amazing! I love to hear it. 🌟"
+        };
+
+        const greetingsByMood = {
+            low: "I can see today hasn't been easy. I'm really glad you reached out — you don't have to carry this alone. What's been going on?",
+            mid: "Thanks for being here. This is a safe space — feel free to share whatever's on your mind.",
+            high: "It's great that you're feeling well! I'm here if you ever need to talk through anything."
+        };
+
+        // ── Mood Slider ────────────────────────────────────────
+        const slider = document.getElementById("mood-slider");
+        const moodValueEl = document.getElementById("mood-value");
+        const moodDescEl = document.getElementById("mood-description");
+
+        slider.addEventListener("input", () => {
+            userMood = parseInt(slider.value);
+            moodValueEl.textContent = userMood;
+            moodDescEl.textContent = moodDescriptions[userMood];
+            updateSliderColor(userMood);
+        });
+
+        function updateSliderColor(val) {
+            const pct = ((val - 1) / 9) * 100;
+            const low = getComputedStyle(document.documentElement).getPropertyValue('--mood-low').trim();
+            const high = getComputedStyle(document.documentElement).getPropertyValue('--mood-high').trim();
+            slider.style.background = `linear-gradient(to right, var(--mood-low) 0%, var(--accent) ${pct}%, #e0e0e0 ${pct}%)`;
+        }
+
+        // Init slider display
+        moodDescEl.textContent = moodDescriptions[5];
+        updateSliderColor(5);
+
+        // ── Load history from localStorage ────────────────────
+        function loadHistory() {
+            const saved = localStorage.getItem("mindease_history");
+            if (saved) {
+                conversationHistory = JSON.parse(saved);
+            }
+        }
+
+        function saveHistory() {
+            localStorage.setItem("mindease_history", JSON.stringify(conversationHistory));
+        }
+
+        function clearHistory() {
+            if (confirm("Clear all chat history?")) {
+                conversationHistory = [];
+                localStorage.removeItem("mindease_history");
+                const chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML = `<div class="bot-message message"><p>${document.getElementById("greeting-text").textContent || "Hi! How can I help?"}</p></div>`;
+                document.getElementById("crisis-banner").classList.add("hidden");
+            }
+        }
+
+        // ── Screen Navigation ──────────────────────────────────
+        function startChat() {
+            document.getElementById("mood-screen").classList.remove("active");
+            document.getElementById("chat-screen").classList.add("active");
+
+            // Set mood badge
+            const moodEmoji = userMood <= 3 ? "😔" : userMood <= 6 ? "😐" : "😊";
+            document.getElementById("mood-badge").textContent = `Mood: ${moodEmoji} ${userMood}/10`;
+
+            // Set greeting based on mood
+            const greetingKey = userMood <= 3 ? "low" : userMood <= 6 ? "mid" : "high";
+            const greeting = greetingsByMood[greetingKey];
+            document.getElementById("greeting-text").textContent = greeting;
+
+            // Add greeting to history so Claude has context
+            loadHistory();
+
+            // Restore previous chat messages in the UI
+            if (conversationHistory.length > 0) {
+                const chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML = "";
+                conversationHistory.forEach(msg => {
+                    if (msg.role === "user") {
+                        chatBox.innerHTML += buildUserMessage(msg.content);
+                    } else {
+                        chatBox.innerHTML += buildBotMessage(msg.content);
+                    }
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+
+        function goBack() {
+            document.getElementById("chat-screen").classList.remove("active");
+            document.getElementById("mood-screen").classList.add("active");
+        }
+
+        // ── Message Rendering ──────────────────────────────────
+        function buildUserMessage(text) {
+            return `<div class="user-message message"><p>${escapeHtml(text)}</p></div>`;
+        }
+
+        function buildBotMessage(text) {
+            return `<div class="bot-message message"><p>${escapeHtml(text)}</p></div>`;
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function showTyping() {
+            const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML += `<div class="bot-message message typing" id="typing-indicator">
+                <span></span><span></span><span></span>
+            </div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function removeTyping() {
+            const el = document.getElementById("typing-indicator");
+            if (el) el.remove();
+        }
+
+        // ── Send Message ───────────────────────────────────────
+        async function sendMessage() {
+            const input = document.getElementById("message");
+            const message = input.value.trim();
+            if (!message) return;
+
+            const chatBox = document.getElementById("chat-box");
+            const sendBtn = document.getElementById("send-btn");
+
+            // Render user message
+            chatBox.innerHTML += buildUserMessage(message);
+            input.value = "";
+            sendBtn.disabled = true;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Show typing indicator
+            showTyping();
+
+            try {
+                // Build history to send (only last 10 exchanges to keep it concise)
+                const historyToSend = conversationHistory.slice(-20);
+
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: message,
+                        history: historyToSend,
+                        mood: userMood
+                    })
+                });
+
+                const data = await response.json();
+
+                removeTyping();
+                chatBox.innerHTML += buildBotMessage(data.response);
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                // Show crisis banner if needed
+                if (data.crisis) {
+                    document.getElementById("crisis-banner").classList.remove("hidden");
+                }
+
+                // Update history
+                conversationHistory.push({ role: "user", content: message });
+                conversationHistory.push({ role: "assistant", content: data.response });
+                saveHistory();
+
+            } catch (err) {
+                removeTyping();
+                chatBox.innerHTML += buildBotMessage("Something went wrong. Please try again.");
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    </script>
+</body>
+</html>

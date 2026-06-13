@@ -4,7 +4,7 @@ from groq import Groq
 app = Flask(__name__)
 
 # Paste your Groq API key here
-client = Groq(api_key="paste-your-groq-key-here")
+client = Groq(api_key="GROQ_API_KEY")
 
 SYSTEM_PROMPT = """You are a compassionate and supportive mental health chatbot called MindEase. 
 Your role is to provide emotional support, active listening, and gentle guidance to users who may be 

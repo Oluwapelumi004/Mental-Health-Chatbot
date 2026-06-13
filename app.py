@@ -1,15 +1,11 @@
 from flask import Flask, request, jsonify, render_template
 from groq import Groq
-import os
-
-if os.path.exists(".env"):
-    from dotenv import load_dotenv
-    load_dotenv()
 
 app = Flask(__name__)
 
 # Paste your Groq API key here
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+client = Groq(api_key="paste-your-groq-key-here")
+
 SYSTEM_PROMPT = """You are a compassionate and supportive mental health chatbot called MindEase. 
 Your role is to provide emotional support, active listening, and gentle guidance to users who may be 
 experiencing stress, anxiety, sadness, or other emotional difficulties.
@@ -50,7 +46,7 @@ def get_groq_response(user_message, conversation_history):
     messages.append({"role": "user", "content": user_message})
 
     response = client.chat.completions.create(
-       model="llama-3.3-70b-versatile",
+        model="llama3-8b-8192",
         messages=messages,
         max_tokens=300,
         temperature=0.7
@@ -62,6 +58,11 @@ def get_groq_response(user_message, conversation_history):
 @app.route("/")
 def home():
     return render_template("index.html")
+
+
+@app.route("/resources")
+def resources():
+    return render_template("resources.html")
 
 
 @app.route("/chat", methods=["POST"])

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindEase — Resources</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/resources.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/" class="nav-logo">🌿 MindEase</a>
+        <a href="/" class="nav-link">← Back to Chat</a>
+    </nav>
+
+    <main class="container">
+
+        <div class="page-header">
+            <h1>Resources</h1>
+            <p>Tools and support to help you through difficult moments.</p>
+        </div>
+
+        <!-- Breathing Exercises -->
+        <section class="section">
+            <div class="section-title">
+                <span class="section-icon">🌬️</span>
+                <h2>Breathing Exercises</h2>
+            </div>
+
+            <div class="cards-grid">
+
+                <div class="card">
+                    <h3>Box Breathing</h3>
+                    <p class="card-desc">A technique used by Navy SEALs to stay calm under pressure. Great for anxiety and stress.</p>
+                    <ol class="steps">
+                        <li>Inhale slowly for <strong>4 seconds</strong></li>
+                        <li>Hold your breath for <strong>4 seconds</strong></li>
+                        <li>Exhale slowly for <strong>4 seconds</strong></li>
+                        <li>Hold again for <strong>4 seconds</strong></li>
+                    </ol>
+                    <button class="btn-guide" onclick="startBreathing('box')">Try it guided</button>
+                </div>
+
+                <div class="card">
+                    <h3>4-7-8 Breathing</h3>
+                    <p class="card-desc">A calming technique that activates your body's relaxation response. Ideal before sleep.</p>
+                    <ol class="steps">
+                        <li>Inhale through your nose for <strong>4 seconds</strong></li>
+                        <li>Hold your breath for <strong>7 seconds</strong></li>
+                        <li>Exhale fully through your mouth for <strong>8 seconds</strong></li>
+                        <li>Repeat 3–4 times</li>
+                    </ol>
+                    <button class="btn-guide" onclick="startBreathing('478')">Try it guided</button>
+                </div>
+
+                <div class="card">
+                    <h3>5-5 Equal Breathing</h3>
+                    <p class="card-desc">Simple and effective. Balances the nervous system and helps you feel grounded quickly.</p>
+                    <ol class="steps">
+                        <li>Inhale slowly for <strong>5 seconds</strong></li>
+                        <li>Exhale slowly for <strong>5 seconds</strong></li>
+                        <li>Focus only on your breath</li>
+                        <li>Repeat for 2–5 minutes</li>
+                    </ol>
+                    <button class="btn-guide" onclick="startBreathing('55')">Try it guided</button>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Breathing Guide Modal -->
+        <div id="breathing-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="modal-close" onclick="closeBreathing()">✕</button>
+                <div class="breath-circle-wrapper">
+                    <div id="breath-circle" class="breath-circle"></div>
+                    <p id="breath-instruction" class="breath-instruction">Get ready...</p>
+                    <p id="breath-count" class="breath-count"></p>
+                </div>
+                <p id="breath-label" class="breath-label"></p>
+                <button class="btn-stop" onclick="closeBreathing()">Stop</button>
+            </div>
+        </div>
+
+        <!-- Mental Health Tips -->
+        <section class="section">
+            <div class="section-title">
+                <span class="section-icon">💡</span>
+                <h2>Mental Health Tips</h2>
+            </div>
+
+            <div class="cards-grid">
+
+                <div class="tip-card">
+                    <div class="tip-icon">📓</div>
+                    <h3>Journal Daily</h3>
+                    <p>Writing down your thoughts helps process emotions and gain clarity. Even 5 minutes a day makes a difference.</p>
+                </div>
+
+                <div class="tip-card">
+                    <div class="tip-icon">🚶</div>
+                    <h3>Move Your Body</h3>
+                    <p>A short walk, stretch, or dance break releases endorphins and can shift your mood significantly.</p>
+                </div>
+
+                <div class="tip-card">
+                    <div class="tip-icon">😴</div>
+                    <h3>Prioritise Sleep</h3>
+                    <p>Poor sleep worsens anxiety and depression. Aim for 7–9 hours and try a consistent bedtime routine.</p>
+                </div>
+
+                <div class="tip-card">
+                    <div class="tip-icon">📵</div>
+                    <h3>Limit Social Media</h3>
+                    <p>Constant scrolling increases comparison and anxiety. Try a 30-minute daily limit and notice how you feel.</p>
+                </div>
+
+                <div class="tip-card">
+                    <div class="tip-icon">🤝</div>
+                    <h3>Talk to Someone</h3>
+                    <p>Sharing your feelings with a trusted friend, family member, or counsellor reduces the weight you carry alone.</p>
+                </div>
+
+                <div class="tip-card">
+                    <div class="tip-icon">🌱</div>
+                    <h3>Be Kind to Yourself</h3>
+                    <p>You wouldn't speak harshly to a friend going through hard times. Extend that same compassion to yourself.</p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Helplines -->
+        <section class="section">
+            <div class="section-title">
+                <span class="section-icon">📞</span>
+                <h2>Helplines & Support</h2>
+            </div>
+
+            <div class="helplines-grid">
+
+                <div class="helpline-card nigeria">
+                    <div class="helpline-flag">🇳🇬</div>
+                    <div class="helpline-info">
+                        <h3>Mentally Aware Nigeria Initiative</h3>
+                        <p>Free mental health support for Nigerians</p>
+                        <a href="tel:08006368259" class="helpline-number">0800-MENTALLY (0800-6368259)</a>
+                    </div>
+                </div>
+
+                <div class="helpline-card">
+                    <div class="helpline-flag">🌍</div>
+                    <div class="helpline-info">
+                        <h3>Befrienders Worldwide</h3>
+                        <p>Emotional support available in many countries</p>
+                        <a href="https://www.befrienders.org" target="_blank" class="helpline-number">befrienders.org</a>
+                    </div>
+                </div>
+
+                <div class="helpline-card">
+                    <div class="helpline-flag">💬</div>
+                    <div class="helpline-info">
+                        <h3>Crisis Text Line</h3>
+                        <p>Text-based crisis support (US, UK, Canada, Ireland)</p>
+                        <a href="https://www.crisistextline.org" target="_blank" class="helpline-number">crisistextline.org</a>
+                    </div>
+                </div>
+
+                <div class="helpline-card">
+                    <div class="helpline-flag">🧠</div>
+                    <div class="helpline-info">
+                        <h3>WHO Mental Health</h3>
+                        <p>Global mental health resources and information</p>
+                        <a href="https://www.who.int/health-topics/mental-health" target="_blank" class="helpline-number">who.int/mental-health</a>
+                    </div>
+                </div>
+
+            </div>
+
+            <p class="helpline-note">
+                💙 If you are in immediate danger, please call your local emergency services (Nigeria: <strong>112</strong>).
+            </p>
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <p>MindEase is not a substitute for professional mental health care.</p>
+        <a href="/">Back to Chat →</a>
+    </footer>
+
+    <script>
+        // ── Breathing Guide ────────────────────────────────────
+        const exercises = {
+            box:  { name: "Box Breathing",     steps: [["Inhale", 4], ["Hold", 4], ["Exhale", 4], ["Hold", 4]] },
+            "478": { name: "4-7-8 Breathing",  steps: [["Inhale", 4], ["Hold", 7], ["Exhale", 8]] },
+            "55":  { name: "Equal Breathing",  steps: [["Inhale", 5], ["Exhale", 5]] }
+        };
+
+        let breathInterval = null;
+        let breathTimeout = null;
+
+        function startBreathing(type) {
+            const ex = exercises[type];
+            document.getElementById("breath-label").textContent = ex.name;
+            document.getElementById("breathing-modal").classList.remove("hidden");
+            runBreathingCycle(ex.steps, 0);
+        }
+
+        function runBreathingCycle(steps, stepIndex) {
+            const [instruction, duration] = steps[stepIndex];
+            const circle = document.getElementById("breath-circle");
+            const instrEl = document.getElementById("breath-instruction");
+            const countEl = document.getElementById("breath-count");
+
+            instrEl.textContent = instruction;
+            circle.className = "breath-circle " + instruction.toLowerCase().replace(" ", "-");
+
+            let count = duration;
+            countEl.textContent = count;
+
+            breathInterval = setInterval(() => {
+                count--;
+                countEl.textContent = count;
+                if (count <= 0) {
+                    clearInterval(breathInterval);
+                    const nextStep = (stepIndex + 1) % steps.length;
+                    breathTimeout = setTimeout(() => runBreathingCycle(steps, nextStep), 300);
+                }
+            }, 1000);
+        }
+
+        function closeBreathing() {
+            clearInterval(breathInterval);
+            clearTimeout(breathTimeout);
+            document.getElementById("breathing-modal").classList.add("hidden");
+            document.getElementById("breath-circle").className = "breath-circle";
+            document.getElementById("breath-instruction").textContent = "Get ready...";
+            document.getElementById("breath-count").textContent = "";
+        }
+    </script>
+
+</body>
+</html>

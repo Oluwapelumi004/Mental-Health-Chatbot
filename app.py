@@ -1,10 +1,14 @@
 from flask import Flask, request, jsonify, render_template
 from groq import Groq
+import os 
 
+if os.path.exists(".env"):
+    from dotenv import load_dotenv
+    load_dotenv()
 app = Flask(__name__)
 
 # Paste your Groq API key here
-client = Groq(api_key="GROQ_API_KEY")
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """You are a compassionate and supportive mental health chatbot called MindEase. 
 Your role is to provide emotional support, active listening, and gentle guidance to users who may be 

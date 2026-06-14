@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindEase — {{ "Register" if mode == "register" else "Login" }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/auth.css">
+</head>
+<body>
+
+    <div class="auth-card">
+        <div class="logo">🌿</div>
+        <h1>MindEase</h1>
+        <p class="tagline">A safe space to talk about how you're feeling.</p>
+
+        <div class="tabs">
+            <a href="/login" class="tab {{ 'active' if mode == 'login' else '' }}">Login</a>
+            <a href="/register" class="tab {{ 'active' if mode == 'register' else '' }}">Register</a>
+        </div>
+
+        <div id="error-msg" class="error-msg hidden"></div>
+
+        <div class="form">
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter your username" autocomplete="username">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+            </div>
+            {% if mode == "register" %}
+            <div class="input-group">
+                <label>Confirm Password</label>
+                <input type="password" id="confirm-password" placeholder="Confirm your password">
+            </div>
+            {% endif %}
+            <button id="submit-btn" onclick="submitForm()">
+                {{ "Create Account" if mode == "register" else "Login" }}
+            </button>
+        </div>
+
+        <p class="disclaimer">Not a substitute for professional mental health care.</p>
+    </div>
+
+    <script>
+        const mode = "{{ mode }}";
+
+        // Allow Enter key to submit
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") submitForm();
+        });
+
+        async function submitForm() {
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const errorEl = document.getElementById("error-msg");
+            const btn = document.getElementById("submit-btn");
+
+            errorEl.classList.add("hidden");
+
+            if (!username || !password) {
+                showError("Please fill in all fields.");
+                return;
+            }
+
+            if (mode === "register") {
+                const confirm = document.getElementById("confirm-password").value.trim();
+                if (password !== confirm) {
+                    showError("Passwords do not match.");
+                    return;
+                }
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Please wait...";
+
+            const endpoint = mode === "register" ? "/register" : "/login";
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.href = "/";
+                } else {
+                    showError(data.error || "Something went wrong.");
+                    btn.disabled = false;
+                    btn.textContent = mode === "register" ? "Create Account" : "Login";
+                }
+            } catch (err) {
+                showError("Connection error. Please try again.");
+                btn.disabled = false;
+                btn.textContent = mode === "register" ? "Create Account" : "Login";
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById("error-msg");
+            el.textContent = msg;
+            el.classList.remove("hidden");
+        }
+    </script>
+</body>
+</html>

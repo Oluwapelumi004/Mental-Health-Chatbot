@@ -503,74 +503,18 @@ body {
     cursor: not-allowed;
     transform: none;
 }
-/* ── Mood Chart Modal ──────────────────────────────── */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(45, 31, 14, 0.55);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-    animation: fadeIn 0.3s ease;
+
+/* ── Auth Links ────────────────────────────────────── */
+.auth-links {
+    margin: 12px 0 8px;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-.modal-box {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 28px;
-    width: 90%;
-    max-width: 440px;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.2);
-    border: 1px solid var(--border-light);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.modal-header h3 {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.2rem;
-    color: var(--accent-dark);
-}
-
-.modal-close-btn {
-    background: var(--accent-lighter);
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
-    font-size: 0.85rem;
+.logout-link {
+    font-size: 0.82rem;
     color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-}
-
-.modal-close-btn:hover { background: var(--accent); color: white; }
-
-#mood-canvas {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-
-.chart-empty {
-    text-align: center;
-    color: var(--text-muted);
+    text-decoration: none;
     font-style: italic;
-    font-size: 0.9rem;
-    padding: 32px 0;
+    transition: color 0.2s;
 }
+
+.logout-link:hover { color: var(--accent-dark); }

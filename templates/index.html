@@ -15,7 +15,7 @@
         <div class="mood-card">
             <div class="logo">🌿</div>
             <h1>MindEase</h1>
-            <p class="tagline">A safe space to talk about how you're feeling.</p>
+            <p class="tagline">Welcome back, <strong>{{ username }}</strong> 👋</p>
 
             <div class="mood-section">
                 <label>Before we begin — how are you feeling right now?</label>
@@ -31,6 +31,9 @@
             </div>
 
             <button id="start-btn" onclick="startChat()">Start Talking</button>
+            <div class="auth-links">
+                <a href="/logout" class="logout-link">Logout</a>
+            </div>
             <p class="disclaimer">Not a substitute for professional mental health care.</p>
         </div>
     </div>
@@ -74,7 +77,7 @@
                 </div>
             </div>
 
-            <!-- Crisis Banner (hidden by default) -->
+            <!-- Crisis Banner -->
             <div id="crisis-banner" class="crisis-banner hidden">
                 <strong>🆘 If you're in crisis, please call:</strong>
                 Nigeria: <a href="tel:08006368259">0800-MENTALLY</a> &nbsp;|&nbsp;
@@ -96,8 +99,6 @@
     </div>
 
     <script>
-        // ── State ──────────────────────────────────────────────
-        let conversationHistory = [];
         let userMood = 5;
 
         const moodDescriptions = {
@@ -139,72 +140,65 @@
         moodDescEl.textContent = moodDescriptions[5];
         updateSliderColor(5);
 
-        // ── Chat History ───────────────────────────────────────
-        function loadHistory() {
-            const saved = localStorage.getItem("mindease_history");
-            if (saved) {
-                conversationHistory = JSON.parse(saved);
-            }
-        }
-
-        function saveHistory() {
-            localStorage.setItem("mindease_history", JSON.stringify(conversationHistory));
-        }
-
-        function clearHistory() {
-            if (confirm("Clear all chat history?")) {
-                conversationHistory = [];
-                localStorage.removeItem("mindease_history");
-                const chatBox = document.getElementById("chat-box");
-                chatBox.innerHTML = `<div class="bot-message message"><p>${document.getElementById("greeting-text").textContent || "Hi! How can I help?"}</p></div>`;
-                document.getElementById("crisis-banner").classList.add("hidden");
-            }
-        }
-
-        // ── Mood Entry ─────────────────────────────────────────
-        function saveMoodEntry(score) {
-            const history = JSON.parse(localStorage.getItem("mindease_mood_history") || "[]");
-            history.push({
-                score: score,
-                date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
-                timestamp: Date.now()
-            });
-            if (history.length > 14) history.shift();
-            localStorage.setItem("mindease_mood_history", JSON.stringify(history));
-        }
-
         // ── Screen Navigation ──────────────────────────────────
-        function startChat() {
+        async function startChat() {
             document.getElementById("mood-screen").classList.remove("active");
             document.getElementById("chat-screen").classList.add("active");
 
             const moodEmoji = userMood <= 3 ? "😔" : userMood <= 6 ? "😐" : "😊";
             document.getElementById("mood-badge").textContent = `Mood: ${moodEmoji} ${userMood}/10`;
-            saveMoodEntry(userMood);
+
+            // Save mood to database
+            await fetch("/mood", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    score: userMood,
+                    date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+                    timestamp: Date.now()
+                })
+            });
 
             const greetingKey = userMood <= 3 ? "low" : userMood <= 6 ? "mid" : "high";
-            const greeting = greetingsByMood[greetingKey];
-            document.getElementById("greeting-text").textContent = greeting;
+            document.getElementById("greeting-text").textContent = greetingsByMood[greetingKey];
 
-            loadHistory();
+            // Load previous chat from database
+            loadChatHistory();
+        }
 
-            if (conversationHistory.length > 0) {
-                const chatBox = document.getElementById("chat-box");
-                chatBox.innerHTML = "";
-                conversationHistory.forEach(msg => {
-                    if (msg.role === "user") {
-                        chatBox.innerHTML += buildUserMessage(msg.content);
-                    } else {
-                        chatBox.innerHTML += buildBotMessage(msg.content);
-                    }
-                });
-                chatBox.scrollTop = chatBox.scrollHeight;
+        async function loadChatHistory() {
+            const chatBox = document.getElementById("chat-box");
+            try {
+                const res = await fetch("/chat-history");
+                const data = await res.json();
+                if (data.history && data.history.length > 0) {
+                    chatBox.innerHTML = "";
+                    data.history.forEach(msg => {
+                        if (msg.role === "user") {
+                            chatBox.innerHTML += buildUserMessage(msg.content);
+                        } else {
+                            chatBox.innerHTML += buildBotMessage(msg.content);
+                        }
+                    });
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            } catch (err) {
+                console.log("Could not load history:", err);
             }
         }
 
         function goBack() {
             document.getElementById("chat-screen").classList.remove("active");
             document.getElementById("mood-screen").classList.add("active");
+        }
+
+        async function clearHistory() {
+            if (confirm("Clear all chat history?")) {
+                await fetch("/clear-history", { method: "POST" });
+                const chatBox = document.getElementById("chat-box");
+                chatBox.innerHTML = `<div class="bot-message message"><p>${document.getElementById("greeting-text").textContent}</p></div>`;
+                document.getElementById("crisis-banner").classList.add("hidden");
+            }
         }
 
         // ── Message Rendering ──────────────────────────────────
@@ -246,24 +240,16 @@
             input.value = "";
             sendBtn.disabled = true;
             chatBox.scrollTop = chatBox.scrollHeight;
-
             showTyping();
 
             try {
-                const historyToSend = conversationHistory.slice(-20);
-
                 const response = await fetch("/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        message: message,
-                        history: historyToSend,
-                        mood: userMood
-                    })
+                    body: JSON.stringify({ message: message, mood: userMood })
                 });
 
                 const data = await response.json();
-
                 removeTyping();
                 chatBox.innerHTML += buildBotMessage(data.response);
                 chatBox.scrollTop = chatBox.scrollHeight;
@@ -271,10 +257,6 @@
                 if (data.crisis) {
                     document.getElementById("crisis-banner").classList.remove("hidden");
                 }
-
-                conversationHistory.push({ role: "user", content: message });
-                conversationHistory.push({ role: "assistant", content: data.response });
-                saveHistory();
 
             } catch (err) {
                 removeTyping();
@@ -288,8 +270,7 @@
 
         // ── Mood Chart ─────────────────────────────────────────
         function showMoodChart() {
-            const modal = document.getElementById("mood-chart-modal");
-            modal.classList.remove("hidden");
+            document.getElementById("mood-chart-modal").classList.remove("hidden");
             drawMoodChart();
         }
 
@@ -297,12 +278,15 @@
             document.getElementById("mood-chart-modal").classList.add("hidden");
         }
 
-        function drawMoodChart() {
-            const history = JSON.parse(localStorage.getItem("mindease_mood_history") || "[]");
+        async function drawMoodChart() {
             const canvas = document.getElementById("mood-canvas");
             const empty = document.getElementById("mood-chart-empty");
 
-            if (history.length < 2) {
+            const res = await fetch("/mood");
+            const data = await res.json();
+            const history = data.history;
+
+            if (!history || history.length < 2) {
                 canvas.classList.add("hidden");
                 empty.classList.remove("hidden");
                 return;
@@ -320,7 +304,6 @@
 
             ctx.clearRect(0, 0, W, H);
 
-            // Grid lines
             ctx.strokeStyle = "#f5ead8";
             ctx.lineWidth = 1;
             for (let i = 0; i <= 5; i++) {
@@ -331,7 +314,6 @@
                 ctx.stroke();
             }
 
-            // Y axis labels
             ctx.fillStyle = "#9a7a5a";
             ctx.font = "11px Lora, serif";
             ctx.textAlign = "right";
@@ -341,38 +323,30 @@
                 ctx.fillText(val, pad.left - 6, y + 4);
             }
 
-            // Plot points
             const stepX = chartW / (history.length - 1);
             const getY = score => pad.top + chartH - ((score - 1) / 9) * chartH;
 
-            // Gradient fill
             const gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
             gradient.addColorStop(0, "rgba(192,122,58,0.25)");
             gradient.addColorStop(1, "rgba(192,122,58,0.02)");
 
             ctx.beginPath();
             ctx.moveTo(pad.left, getY(history[0].score));
-            history.forEach((entry, i) => {
-                ctx.lineTo(pad.left + i * stepX, getY(entry.score));
-            });
+            history.forEach((entry, i) => ctx.lineTo(pad.left + i * stepX, getY(entry.score)));
             ctx.lineTo(pad.left + (history.length - 1) * stepX, pad.top + chartH);
             ctx.lineTo(pad.left, pad.top + chartH);
             ctx.closePath();
             ctx.fillStyle = gradient;
             ctx.fill();
 
-            // Line
             ctx.beginPath();
             ctx.moveTo(pad.left, getY(history[0].score));
-            history.forEach((entry, i) => {
-                ctx.lineTo(pad.left + i * stepX, getY(entry.score));
-            });
+            history.forEach((entry, i) => ctx.lineTo(pad.left + i * stepX, getY(entry.score)));
             ctx.strokeStyle = "#c07a3a";
             ctx.lineWidth = 2.5;
             ctx.lineJoin = "round";
             ctx.stroke();
 
-            // Dots
             history.forEach((entry, i) => {
                 const x = pad.left + i * stepX;
                 const y = getY(entry.score);
@@ -385,13 +359,11 @@
                 ctx.stroke();
             });
 
-            // X axis labels
             ctx.fillStyle = "#9a7a5a";
             ctx.font = "10px Lora, serif";
             ctx.textAlign = "center";
             history.forEach((entry, i) => {
-                const x = pad.left + i * stepX;
-                ctx.fillText(entry.date, x, H - 8);
+                ctx.fillText(entry.date, pad.left + i * stepX, H - 8);
             });
         }
     </script>

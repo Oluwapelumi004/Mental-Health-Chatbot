@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from groq import Groq
 import sqlite3
-import json
 import os
 
 if os.path.exists(".env"):
@@ -12,6 +12,16 @@ if os.path.exists(".env"):
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "mindease-secret-key-2024")
+
+# ── Mail Config ────────────────────────────────────────
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 587
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_USERNAME")
+
+mail = Mail(app)
 
 # ── Groq Client ────────────────────────────────────────
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -55,6 +65,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL
         )
     """)
@@ -79,15 +90,24 @@ def init_db():
         )
     """)
     db.commit()
+
+    # Add email column if it doesn't exist (for existing databases)
+    try:
+        db.execute("ALTER TABLE users ADD COLUMN email TEXT")
+        db.commit()
+    except:
+        pass
+
     db.close()
 
 init_db()
 
 # ── User Model ─────────────────────────────────────────
 class User(UserMixin):
-    def __init__(self, id, username):
+    def __init__(self, id, username, email):
         self.id = id
         self.username = username
+        self.email = email
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -95,8 +115,41 @@ def load_user(user_id):
     user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     db.close()
     if user:
-        return User(user["id"], user["username"])
+        return User(user["id"], user["username"], user["email"] if "email" in user.keys() else "")
     return None
+
+# ── Email Helpers ──────────────────────────────────────
+def send_welcome_email(email, username):
+    try:
+        msg = Message(
+            subject="Welcome to MindEase 🌿",
+            recipients=[email],
+            html=f"""
+            <div style="font-family: Georgia, serif; max-width: 500px; margin: 0 auto; padding: 32px; background: #fffbf5; border-radius: 16px;">
+                <h1 style="color: #8b5218; font-size: 1.8rem; margin-bottom: 8px;">Welcome to MindEase 🌿</h1>
+                <p style="color: #9a7a5a; font-style: italic; margin-bottom: 24px;">A safe space to talk about how you're feeling.</p>
+                <p style="color: #2d1f0e; line-height: 1.7;">Hi <strong>{username}</strong>,</p>
+                <p style="color: #2d1f0e; line-height: 1.7; margin-top: 12px;">
+                    Your MindEase account has been created successfully. We're glad you're here.
+                </p>
+                <p style="color: #2d1f0e; line-height: 1.7; margin-top: 12px;">
+                    MindEase is here to provide a safe, judgment-free space whenever you need to talk. 
+                    Remember, while we're always here to listen, we're not a substitute for professional mental health care.
+                </p>
+                <div style="margin-top: 28px; padding: 16px; background: #fdf0e0; border-radius: 10px; border-left: 3px solid #c07a3a;">
+                    <p style="color: #8b5218; font-size: 0.9rem; margin: 0;">
+                        🇳🇬 If you ever need immediate support, call <strong>0800-MENTALLY (0800-6368259)</strong>
+                    </p>
+                </div>
+                <p style="color: #c4a882; font-size: 0.8rem; margin-top: 28px; font-style: italic;">
+                    This is an automated message. Please do not reply to this email.
+                </p>
+            </div>
+            """
+        )
+        mail.send(msg)
+    except Exception as e:
+        print(f"Email error: {e}")
 
 # ── Helper Functions ───────────────────────────────────
 def is_crisis_message(message):
@@ -126,32 +179,39 @@ def register():
     if request.method == "POST":
         data = request.json
         username = data.get("username", "").strip()
+        email = data.get("email", "").strip().lower()
         password = data.get("password", "").strip()
 
-        if not username or not password:
-            return jsonify({"error": "Username and password are required."}), 400
-
+        if not username or not email or not password:
+            return jsonify({"error": "All fields are required."}), 400
         if len(username) < 3:
             return jsonify({"error": "Username must be at least 3 characters."}), 400
-
+        if "@" not in email:
+            return jsonify({"error": "Please enter a valid email address."}), 400
         if len(password) < 6:
             return jsonify({"error": "Password must be at least 6 characters."}), 400
 
         db = get_db()
-        existing = db.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone()
-        if existing:
+        if db.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone():
             db.close()
             return jsonify({"error": "Username already taken."}), 400
+        if db.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone():
+            db.close()
+            return jsonify({"error": "Email already registered."}), 400
 
         hashed = generate_password_hash(password)
-        db.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
+        db.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", (username, email, hashed))
         db.commit()
 
         user_row = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
         db.close()
 
-        user = User(user_row["id"], user_row["username"])
+        user = User(user_row["id"], user_row["username"], user_row["email"])
         login_user(user)
+
+        # Send welcome email
+        send_welcome_email(email, username)
+
         return jsonify({"success": True}), 200
 
     return render_template("auth.html", mode="register")
@@ -164,17 +224,21 @@ def login_page():
 
     if request.method == "POST":
         data = request.json
-        username = data.get("username", "").strip()
+        login_input = data.get("username", "").strip()
         password = data.get("password", "").strip()
 
         db = get_db()
-        user_row = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        # Allow login with username or email
+        user_row = db.execute(
+            "SELECT * FROM users WHERE username = ? OR email = ?",
+            (login_input, login_input.lower())
+        ).fetchone()
         db.close()
 
         if not user_row or not check_password_hash(user_row["password"], password):
-            return jsonify({"error": "Invalid username or password."}), 401
+            return jsonify({"error": "Invalid username/email or password."}), 401
 
-        user = User(user_row["id"], user_row["username"])
+        user = User(user_row["id"], user_row["username"], user_row["email"] if "email" in user_row.keys() else "")
         login_user(user)
         return jsonify({"success": True}), 200
 
@@ -211,14 +275,13 @@ def chat():
     if not user_message.strip():
         return jsonify({"response": "Please type a message.", "crisis": False})
 
-    # Load chat history from database
     db = get_db()
     rows = db.execute(
         "SELECT role, content FROM chat_history WHERE user_id = ? ORDER BY timestamp ASC",
         (current_user.id,)
     ).fetchall()
     conversation_history = [{"role": r["role"], "content": r["content"]} for r in rows]
-    conversation_history = conversation_history[-20:]  # last 20 messages
+    conversation_history = conversation_history[-40:]
 
     if is_crisis_message(user_message):
         crisis_response = (
@@ -234,7 +297,6 @@ def chat():
     try:
         bot_response = get_groq_response(user_message, conversation_history)
 
-        # Save to database
         db.execute(
             "INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)",
             (current_user.id, "user", user_message)
@@ -286,8 +348,7 @@ def get_mood():
     ).fetchall()
     db.close()
     history = [{"score": r["score"], "date": r["date"], "timestamp": r["timestamp"]} for r in rows]
-    history = history[-14:]  # last 14 entries
-    return jsonify({"history": history})
+    return jsonify({"history": history[-14:]})
 
 
 @app.route("/chat-history", methods=["GET"])

@@ -27,16 +27,30 @@
                 <label>Username</label>
                 <input type="text" id="username" placeholder="Enter your username" autocomplete="username">
             </div>
+
+            {% if mode == "register" %}
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" id="email" placeholder="Enter your email address" autocomplete="email">
+            </div>
+            {% endif %}
+
             <div class="input-group">
                 <label>Password</label>
                 <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
             </div>
+
             {% if mode == "register" %}
             <div class="input-group">
                 <label>Confirm Password</label>
                 <input type="password" id="confirm-password" placeholder="Confirm your password">
             </div>
             {% endif %}
+
+            {% if mode == "login" %}
+            <p class="login-hint">You can login with your username or email.</p>
+            {% endif %}
+
             <button id="submit-btn" onclick="submitForm()">
                 {{ "Create Account" if mode == "register" else "Login" }}
             </button>
@@ -48,7 +62,6 @@
     <script>
         const mode = "{{ mode }}";
 
-        // Allow Enter key to submit
         document.addEventListener("keydown", (e) => {
             if (e.key === "Enter") submitForm();
         });
@@ -66,12 +79,21 @@
                 return;
             }
 
+            let body = { username, password };
+
             if (mode === "register") {
+                const email = document.getElementById("email").value.trim();
                 const confirm = document.getElementById("confirm-password").value.trim();
+
+                if (!email) {
+                    showError("Please enter your email address.");
+                    return;
+                }
                 if (password !== confirm) {
                     showError("Passwords do not match.");
                     return;
                 }
+                body.email = email;
             }
 
             btn.disabled = true;
@@ -83,7 +105,7 @@
                 const response = await fetch(endpoint, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify(body)
                 });
 
                 const data = await response.json();

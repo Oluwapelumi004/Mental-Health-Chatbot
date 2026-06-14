@@ -198,3 +198,11 @@ h1 {
     color: var(--text-light);
     font-style: italic;
 }
+
+.login-hint {
+    font-size: 0.78rem;
+    color: var(--text-light);
+    font-style: italic;
+    text-align: center;
+    margin-top: -8px;
+}

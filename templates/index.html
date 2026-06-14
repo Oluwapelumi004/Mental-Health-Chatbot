@@ -176,21 +176,19 @@
 }
 
         // ── Screen Navigation ──────────────────────────────────
-        function startChat() {
-            document.getElementById("mood-badge").textContent = `Mood: ${moodEmoji} ${userMood}/10`;
-            saveMoodEntry(userMood);
+       function startChat() {
             document.getElementById("mood-screen").classList.remove("active");
             document.getElementById("chat-screen").classList.add("active");
 
             // Set mood badge
             const moodEmoji = userMood <= 3 ? "😔" : userMood <= 6 ? "😐" : "😊";
             document.getElementById("mood-badge").textContent = `Mood: ${moodEmoji} ${userMood}/10`;
+            saveMoodEntry(userMood);
 
             // Set greeting based on mood
             const greetingKey = userMood <= 3 ? "low" : userMood <= 6 ? "mid" : "high";
             const greeting = greetingsByMood[greetingKey];
             document.getElementById("greeting-text").textContent = greeting;
-
             // Add greeting to history so Claude has context
             conversationHistory = [];
             loadHistory();

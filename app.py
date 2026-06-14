@@ -4,6 +4,7 @@ from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from groq import Groq
 import sqlite3
+import threading
 import os
 
 if os.path.exists(".env"):
@@ -120,11 +121,12 @@ def load_user(user_id):
 
 # ── Email Helpers ──────────────────────────────────────
 def send_welcome_email(email, username):
-    try:
-        msg = Message(
-            subject="Welcome to MindEase 🌿",
-            recipients=[email],
-            html=f"""
+    with app.app_context():
+        try:
+            msg = Message(
+                subject="Welcome to MindEase 🌿",
+                recipients=[email],
+                html=f"""
             <div style="font-family: Georgia, serif; max-width: 500px; margin: 0 auto; padding: 32px; background: #fffbf5; border-radius: 16px;">
                 <h1 style="color: #8b5218; font-size: 1.8rem; margin-bottom: 8px;">Welcome to MindEase 🌿</h1>
                 <p style="color: #9a7a5a; font-style: italic; margin-bottom: 24px;">A safe space to talk about how you're feeling.</p>
@@ -146,10 +148,10 @@ def send_welcome_email(email, username):
                 </p>
             </div>
             """
-        )
-        mail.send(msg)
-    except Exception as e:
-        print(f"Email error: {e}")
+            )
+            mail.send(msg)
+        except Exception as e:
+            print(f"Email error: {e}")
 
 # ── Helper Functions ───────────────────────────────────
 def is_crisis_message(message):
@@ -209,8 +211,8 @@ def register():
         user = User(user_row["id"], user_row["username"], user_row["email"])
         login_user(user)
 
-        # Send welcome email
-        send_welcome_email(email, username)
+        # Send welcome email in background thread
+        threading.Thread(target=send_welcome_email, args=(email, username)).start()
 
         return jsonify({"success": True}), 200
 

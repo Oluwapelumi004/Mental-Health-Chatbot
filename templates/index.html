@@ -10,31 +10,40 @@
 </head>
 <body>
 
+    <!-- Dark Mode Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">🌙</span>
+        <span id="theme-label">Dark mode</span>
+    </button>
+
     <!-- Mood Check-in Screen -->
     <div id="mood-screen" class="screen active">
         <div class="mood-card">
-            <div class="logo">🌿</div>
-            <h1>MindEase</h1>
-            <p class="tagline">Welcome back, <strong>{{ username }}</strong> 👋</p>
-
-            <div class="mood-section">
-                <label>Before we begin — how are you feeling right now?</label>
-                <div class="mood-slider-wrapper">
-                    <input type="range" id="mood-slider" min="1" max="10" value="5">
-                    <div class="mood-labels">
-                        <span>😔 Very low</span>
-                        <span id="mood-value">5</span>
-                        <span>😊 Great</span>
+            <div class="mood-card-header">
+                <span class="logo">🌿</span>
+                <h1>MindEase</h1>
+                <p class="tagline">Welcome back, <strong>{{ username }}</strong> 👋</p>
+            </div>
+            <div class="mood-card-body">
+                <div class="mood-section">
+                    <label>Before we begin — how are you feeling right now?</label>
+                    <div class="mood-slider-wrapper">
+                        <input type="range" id="mood-slider" min="1" max="10" value="5">
+                        <div class="mood-labels">
+                            <span>😔 Very low</span>
+                            <span id="mood-value">5</span>
+                            <span>😊 Great</span>
+                        </div>
                     </div>
+                    <p id="mood-description" class="mood-desc"></p>
                 </div>
-                <p id="mood-description" class="mood-desc"></p>
-            </div>
 
-            <button id="start-btn" onclick="startChat()">Start Talking</button>
-            <div class="auth-links">
-                <a href="/logout" class="logout-link">Logout</a>
+                <button id="start-btn" onclick="startChat()">Start Talking →</button>
+                <div class="auth-links">
+                    <a href="/logout" class="logout-link">Sign out</a>
+                </div>
+                <p class="disclaimer">Not a substitute for professional mental health care.</p>
             </div>
-            <p class="disclaimer">Not a substitute for professional mental health care.</p>
         </div>
     </div>
 
@@ -52,8 +61,8 @@
                 </div>
                 <div class="header-right">
                     <span id="mood-badge"></span>
-                    <button class="icon-btn" onclick="showMoodChart()" title="Mood History">📊</button>
-                    <a href="/resources" class="icon-btn" title="Resources">📚</a>
+                    <button class="icon-btn" onclick="showMoodChart()" title="Mood History">📊 Mood</button>
+                    <a href="/resources" class="icon-btn" title="Resources">📚 Help</a>
                     <button class="icon-btn" onclick="clearHistory()" title="Clear chat">🗑</button>
                     <button class="icon-btn" onclick="goBack()" title="Back">✕</button>
                 </div>
@@ -61,6 +70,7 @@
 
             <div id="chat-box">
                 <div class="bot-message message">
+                    <span class="msg-label">MindEase</span>
                     <p id="greeting-text"></p>
                 </div>
             </div>
@@ -120,6 +130,23 @@
             high: "It's great that you're feeling well! I'm here if you ever need to talk through anything."
         };
 
+        // ── Dark Mode ──────────────────────────────────────────
+        function toggleTheme() {
+            const isDark = document.body.getAttribute("data-theme") === "dark";
+            document.body.setAttribute("data-theme", isDark ? "light" : "dark");
+            document.getElementById("theme-icon").textContent = isDark ? "🌙" : "☀️";
+            document.getElementById("theme-label").textContent = isDark ? "Dark mode" : "Light mode";
+            localStorage.setItem("mindease_theme", isDark ? "light" : "dark");
+        }
+
+        // Load saved theme
+        const savedTheme = localStorage.getItem("mindease_theme");
+        if (savedTheme === "dark") {
+            document.body.setAttribute("data-theme", "dark");
+            document.getElementById("theme-icon").textContent = "☀️";
+            document.getElementById("theme-label").textContent = "Light mode";
+        }
+
         // ── Mood Slider ────────────────────────────────────────
         const slider = document.getElementById("mood-slider");
         const moodValueEl = document.getElementById("mood-value");
@@ -134,7 +161,7 @@
 
         function updateSliderColor(val) {
             const pct = ((val - 1) / 9) * 100;
-            slider.style.background = `linear-gradient(to right, var(--mood-low) 0%, var(--accent) ${pct}%, #e0e0e0 ${pct}%)`;
+            slider.style.background = `linear-gradient(to right, var(--mood-low) 0%, var(--accent) ${pct}%, var(--border) ${pct}%)`;
         }
 
         moodDescEl.textContent = moodDescriptions[5];
@@ -148,7 +175,6 @@
             const moodEmoji = userMood <= 3 ? "😔" : userMood <= 6 ? "😐" : "😊";
             document.getElementById("mood-badge").textContent = `Mood: ${moodEmoji} ${userMood}/10`;
 
-            // Save mood to database
             await fetch("/mood", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -162,7 +188,6 @@
             const greetingKey = userMood <= 3 ? "low" : userMood <= 6 ? "mid" : "high";
             document.getElementById("greeting-text").textContent = greetingsByMood[greetingKey];
 
-            // Load previous chat from database
             loadChatHistory();
         }
 
@@ -196,18 +221,18 @@
             if (confirm("Clear all chat history?")) {
                 await fetch("/clear-history", { method: "POST" });
                 const chatBox = document.getElementById("chat-box");
-                chatBox.innerHTML = `<div class="bot-message message"><p>${document.getElementById("greeting-text").textContent}</p></div>`;
+                chatBox.innerHTML = `<div class="bot-message message"><span class="msg-label">MindEase</span><p>${document.getElementById("greeting-text").textContent}</p></div>`;
                 document.getElementById("crisis-banner").classList.add("hidden");
             }
         }
 
         // ── Message Rendering ──────────────────────────────────
         function buildUserMessage(text) {
-            return `<div class="user-message message"><p>${escapeHtml(text)}</p></div>`;
+            return `<div class="user-message message"><span class="msg-label">You</span><p>${escapeHtml(text)}</p></div>`;
         }
 
         function buildBotMessage(text) {
-            return `<div class="bot-message message"><p>${escapeHtml(text)}</p></div>`;
+            return `<div class="bot-message message"><span class="msg-label">MindEase</span><p>${escapeHtml(text)}</p></div>`;
         }
 
         function escapeHtml(text) {
@@ -327,7 +352,7 @@
             const getY = score => pad.top + chartH - ((score - 1) / 9) * chartH;
 
             const gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
-            gradient.addColorStop(0, "rgba(192,122,58,0.25)");
+            gradient.addColorStop(0, "rgba(192,122,58,0.3)");
             gradient.addColorStop(1, "rgba(192,122,58,0.02)");
 
             ctx.beginPath();

@@ -63,16 +63,17 @@
             </div>
 
             <!-- Mood Chart Modal -->
-<div id="mood-chart-modal" class="modal-overlay hidden">
-    <div class="modal-box">
-        <div class="modal-header">
-            <h3>Your Mood History</h3>
-            <button class="modal-close-btn" onclick="closeMoodChart()">✕</button>
-        </div>
-        <canvas id="mood-canvas" width="380" height="220"></canvas>
-        <p id="mood-chart-empty" class="chart-empty hidden">No mood data yet. Come back after a few sessions!</p>
-    </div>
-</div>
+            <div id="mood-chart-modal" class="modal-overlay hidden">
+                <div class="modal-box">
+                    <div class="modal-header">
+                        <h3>Your Mood History</h3>
+                        <button class="modal-close-btn" onclick="closeMoodChart()">✕</button>
+                    </div>
+                    <canvas id="mood-canvas" width="380" height="220"></canvas>
+                    <p id="mood-chart-empty" class="chart-empty hidden">No mood data yet. Come back after a few sessions!</p>
+                </div>
+            </div>
+
             <!-- Crisis Banner (hidden by default) -->
             <div id="crisis-banner" class="crisis-banner hidden">
                 <strong>🆘 If you're in crisis, please call:</strong>
@@ -81,7 +82,7 @@
             </div>
 
             <div class="input-area">
-                <input type="text" id="message" placeholder="Share how you're feeling..." 
+                <input type="text" id="message" placeholder="Share how you're feeling..."
                        onkeydown="if(event.key==='Enter') sendMessage()">
                 <button id="send-btn" onclick="sendMessage()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -132,16 +133,13 @@
 
         function updateSliderColor(val) {
             const pct = ((val - 1) / 9) * 100;
-            const low = getComputedStyle(document.documentElement).getPropertyValue('--mood-low').trim();
-            const high = getComputedStyle(document.documentElement).getPropertyValue('--mood-high').trim();
             slider.style.background = `linear-gradient(to right, var(--mood-low) 0%, var(--accent) ${pct}%, #e0e0e0 ${pct}%)`;
         }
 
-        // Init slider display
         moodDescEl.textContent = moodDescriptions[5];
         updateSliderColor(5);
 
-        // ── Load history from localStorage ────────────────────
+        // ── Chat History ───────────────────────────────────────
         function loadHistory() {
             const saved = localStorage.getItem("mindease_history");
             if (saved) {
@@ -163,37 +161,33 @@
             }
         }
 
+        // ── Mood Entry ─────────────────────────────────────────
         function saveMoodEntry(score) {
-    const history = JSON.parse(localStorage.getItem("mindease_mood_history") || "[]");
-    history.push({
-        score: score,
-        date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
-        timestamp: Date.now()
-    });
-    // Keep only last 14 entries
-    if (history.length > 14) history.shift();
-    localStorage.setItem("mindease_mood_history", JSON.stringify(history));
-}
+            const history = JSON.parse(localStorage.getItem("mindease_mood_history") || "[]");
+            history.push({
+                score: score,
+                date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+                timestamp: Date.now()
+            });
+            if (history.length > 14) history.shift();
+            localStorage.setItem("mindease_mood_history", JSON.stringify(history));
+        }
 
         // ── Screen Navigation ──────────────────────────────────
-       function startChat() {
+        function startChat() {
             document.getElementById("mood-screen").classList.remove("active");
             document.getElementById("chat-screen").classList.add("active");
 
-            // Set mood badge
             const moodEmoji = userMood <= 3 ? "😔" : userMood <= 6 ? "😐" : "😊";
             document.getElementById("mood-badge").textContent = `Mood: ${moodEmoji} ${userMood}/10`;
             saveMoodEntry(userMood);
 
-            // Set greeting based on mood
             const greetingKey = userMood <= 3 ? "low" : userMood <= 6 ? "mid" : "high";
             const greeting = greetingsByMood[greetingKey];
             document.getElementById("greeting-text").textContent = greeting;
-            // Add greeting to history so Claude has context
-            conversationHistory = [];
+
             loadHistory();
 
-            // Restore previous chat messages in the UI
             if (conversationHistory.length > 0) {
                 const chatBox = document.getElementById("chat-box");
                 chatBox.innerHTML = "";
@@ -248,17 +242,14 @@
             const chatBox = document.getElementById("chat-box");
             const sendBtn = document.getElementById("send-btn");
 
-            // Render user message
             chatBox.innerHTML += buildUserMessage(message);
             input.value = "";
             sendBtn.disabled = true;
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // Show typing indicator
             showTyping();
 
             try {
-                // Build history to send (only last 10 exchanges to keep it concise)
                 const historyToSend = conversationHistory.slice(-20);
 
                 const response = await fetch("/chat", {
@@ -277,12 +268,10 @@
                 chatBox.innerHTML += buildBotMessage(data.response);
                 chatBox.scrollTop = chatBox.scrollHeight;
 
-                // Show crisis banner if needed
                 if (data.crisis) {
                     document.getElementById("crisis-banner").classList.remove("hidden");
                 }
 
-                // Update history
                 conversationHistory.push({ role: "user", content: message });
                 conversationHistory.push({ role: "assistant", content: data.response });
                 saveHistory();
@@ -295,114 +284,116 @@
 
             sendBtn.disabled = false;
             input.focus();
-
-            // ── Mood Chart ─────────────────────────────────────
-function showMoodChart() {
-    const modal = document.getElementById("mood-chart-modal");
-    modal.classList.remove("hidden");
-    drawMoodChart();
-}
-
-function closeMoodChart() {
-    document.getElementById("mood-chart-modal").classList.add("hidden");
-}
-
-function drawMoodChart() {
-    const history = JSON.parse(localStorage.getItem("mindease_mood_history") || "[]");
-    const canvas = document.getElementById("mood-canvas");
-    const empty = document.getElementById("mood-chart-empty");
-
-    if (history.length < 2) {
-        canvas.classList.add("hidden");
-        empty.classList.remove("hidden");
-        return;
-    }
-
-    canvas.classList.remove("hidden");
-    empty.classList.add("hidden");
-
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width;
-    const H = canvas.height;
-    const pad = { top: 20, right: 20, bottom: 40, left: 36 };
-    const chartW = W - pad.left - pad.right;
-    const chartH = H - pad.top - pad.bottom;
-
-    ctx.clearRect(0, 0, W, H);
-
-    // Grid lines
-    ctx.strokeStyle = "#f5ead8";
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 5; i++) {
-        const y = pad.top + (chartH / 5) * i;
-        ctx.beginPath();
-        ctx.moveTo(pad.left, y);
-        ctx.lineTo(W - pad.right, y);
-        ctx.stroke();
-    }
-
-    // Y axis labels
-    ctx.fillStyle = "#9a7a5a";
-    ctx.font = "11px Lora, serif";
-    ctx.textAlign = "right";
-    for (let i = 0; i <= 5; i++) {
-        const val = 10 - i * 2;
-        const y = pad.top + (chartH / 5) * i;
-        ctx.fillText(val, pad.left - 6, y + 4);
-    }
-
-    // Plot line
-    const stepX = chartW / (history.length - 1);
-    const getY = score => pad.top + chartH - ((score - 1) / 9) * chartH;
-
-    // Gradient fill
-    const gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
-    gradient.addColorStop(0, "rgba(192,122,58,0.25)");
-    gradient.addColorStop(1, "rgba(192,122,58,0.02)");
-
-    ctx.beginPath();
-    ctx.moveTo(pad.left, getY(history[0].score));
-    history.forEach((entry, i) => {
-        ctx.lineTo(pad.left + i * stepX, getY(entry.score));
-    });
-    ctx.lineTo(pad.left + (history.length - 1) * stepX, pad.top + chartH);
-    ctx.lineTo(pad.left, pad.top + chartH);
-    ctx.closePath();
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    // Line
-    ctx.beginPath();
-    ctx.moveTo(pad.left, getY(history[0].score));
-    history.forEach((entry, i) => {
-        ctx.lineTo(pad.left + i * stepX, getY(entry.score));
-    });
-    ctx.strokeStyle = "#c07a3a";
-    ctx.lineWidth = 2.5;
-    ctx.lineJoin = "round";
-    ctx.stroke();
-
-    // Dots
-    history.forEach((entry, i) => {
-        const x = pad.left + i * stepX;
-        const y = getY(entry.score);
-        ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = "#c07a3a";
-        ctx.fill();
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    });
-
-    // X axis labels
-    ctx.fillStyle = "#9a7a5a";
-    ctx.font = "10px Lora, serif";
-    ctx.textAlign = "center";
-}
         }
-        
+
+        // ── Mood Chart ─────────────────────────────────────────
+        function showMoodChart() {
+            const modal = document.getElementById("mood-chart-modal");
+            modal.classList.remove("hidden");
+            drawMoodChart();
+        }
+
+        function closeMoodChart() {
+            document.getElementById("mood-chart-modal").classList.add("hidden");
+        }
+
+        function drawMoodChart() {
+            const history = JSON.parse(localStorage.getItem("mindease_mood_history") || "[]");
+            const canvas = document.getElementById("mood-canvas");
+            const empty = document.getElementById("mood-chart-empty");
+
+            if (history.length < 2) {
+                canvas.classList.add("hidden");
+                empty.classList.remove("hidden");
+                return;
+            }
+
+            canvas.classList.remove("hidden");
+            empty.classList.add("hidden");
+
+            const ctx = canvas.getContext("2d");
+            const W = canvas.width;
+            const H = canvas.height;
+            const pad = { top: 20, right: 20, bottom: 40, left: 36 };
+            const chartW = W - pad.left - pad.right;
+            const chartH = H - pad.top - pad.bottom;
+
+            ctx.clearRect(0, 0, W, H);
+
+            // Grid lines
+            ctx.strokeStyle = "#f5ead8";
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = pad.top + (chartH / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(pad.left, y);
+                ctx.lineTo(W - pad.right, y);
+                ctx.stroke();
+            }
+
+            // Y axis labels
+            ctx.fillStyle = "#9a7a5a";
+            ctx.font = "11px Lora, serif";
+            ctx.textAlign = "right";
+            for (let i = 0; i <= 5; i++) {
+                const val = 10 - i * 2;
+                const y = pad.top + (chartH / 5) * i;
+                ctx.fillText(val, pad.left - 6, y + 4);
+            }
+
+            // Plot points
+            const stepX = chartW / (history.length - 1);
+            const getY = score => pad.top + chartH - ((score - 1) / 9) * chartH;
+
+            // Gradient fill
+            const gradient = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+            gradient.addColorStop(0, "rgba(192,122,58,0.25)");
+            gradient.addColorStop(1, "rgba(192,122,58,0.02)");
+
+            ctx.beginPath();
+            ctx.moveTo(pad.left, getY(history[0].score));
+            history.forEach((entry, i) => {
+                ctx.lineTo(pad.left + i * stepX, getY(entry.score));
+            });
+            ctx.lineTo(pad.left + (history.length - 1) * stepX, pad.top + chartH);
+            ctx.lineTo(pad.left, pad.top + chartH);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Line
+            ctx.beginPath();
+            ctx.moveTo(pad.left, getY(history[0].score));
+            history.forEach((entry, i) => {
+                ctx.lineTo(pad.left + i * stepX, getY(entry.score));
+            });
+            ctx.strokeStyle = "#c07a3a";
+            ctx.lineWidth = 2.5;
+            ctx.lineJoin = "round";
+            ctx.stroke();
+
+            // Dots
+            history.forEach((entry, i) => {
+                const x = pad.left + i * stepX;
+                const y = getY(entry.score);
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = "#c07a3a";
+                ctx.fill();
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+
+            // X axis labels
+            ctx.fillStyle = "#9a7a5a";
+            ctx.font = "10px Lora, serif";
+            ctx.textAlign = "center";
+            history.forEach((entry, i) => {
+                const x = pad.left + i * stepX;
+                ctx.fillText(entry.date, x, H - 8);
+            });
+        }
     </script>
 </body>
 </html>
-    
